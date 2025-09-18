@@ -1,0 +1,171 @@
+---
+title: "Assignment5"
+author: "Andreu San Millan"
+date: "2025-09-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Assignment 5
+
+The assignment is designed to practice the different clustering algorithms we used. We reanalyzed the dataset about economic indicators of several countries. 
+```{r}
+# data loading
+data = read.table("https://84.89.132.1/~satorra/dades/AMD1.txt", header=T, )
+X <- as.matrix(data[,-1])
+rownames(X) <- data[,1]
+```
+
+1. Center and scale the observations. Name the matrix Xs and do a PCA plot of the variables.
+2. Compute Euclidean, Manhattan, and Mahalanobis distances of the observations in Xs. 
+3. Apply hierarchical clustering to the three distance matrix, compare the results. 
+4. Which linkage method did you use? Now, compare the results fixing one of the distance, and use the different linkage methods you know. 
+5. Apply k-means clustering. Plot the clusters you get from k-means in a PCA plot. 
+6. How does k-means depends on the distance? which one did you use in your implementation 
+7. Choose $k$. Comment the dendogram but discuss also one of the metric discussed in class.  
+8. BONUS: check the stability of the chosen solutions using the bootstrap and comment the output. 
+
+
+
+1. Center and scale the observations. Name the matrix Xs and do a PCA plot of the variables.
+```{r}
+Xs <- scale(X)
+pc <- prcomp(Xs)$x
+plot(pc[,1],pc[,2],xlab='PC1',ylab='PC2')
+text(pc[,1]-0.1,pc[,2]-0.1, labels=rownames(X))
+```
+
+2. Compute Euclidean, Manhattan, and Mahalanobis distances of the observations in Xs. 
+
+```{r}
+
+d_euclidean <- dist(X)
+d_manhattan <- dist(X, method="manhattan")
+
+# covariance
+S <- cov(X)
+
+# eigen descomposition
+eig <- eigen(S)
+V <- eig$vectors
+lambda <- eig$values
+
+# S^(-1/2)
+Sinvsqrt = V%*%diag(1/sqrt(lambda)) %*%t(V)
+
+# X in mahalanobis space
+Xinvsqrt = X%*%Sinvsqrt
+
+d_mahalanobis <- as.dist(dist(Xinvsqrt))
+
+##Alternative way of computing the Mahalanobis distance
+require(ICSNP)
+#covariance estimate
+pairdiff <- pair.diff(Xs)
+d <- mahalanobis(pairdiff,center=rep(0,ncol(pairdiff)),cov=S,inverted=FALSE)
+d_mahalanobis2 <- matrix(0,nrow=nrow(Xs),ncol=nrow(Xs))
+d_mahalanobis2[lower.tri(d_mahalanobis2)] <- d; d_mahalanobis2 <- d_mahalanobis2 + t(d_mahalanobis2)
+
+```
+
+3. Apply hierarchical clustering to the three distance matrix, compare the results. 
+
+Euclidean
+```{r}
+hc <- hclust(d_euclidean)
+plot(hc ,hang = -1, main="Euclidean dist - Complete linkage")
+```
+
+Manhattan
+
+```{r}
+hc <- hclust(d_manhattan)
+plot(hc ,hang = -1, main="Manhatta dist - Complete linkage")
+```
+
+ Mahalanobis
+
+```{r}
+hc <- hclust(d_mahalanobis)
+plot(hc ,hang = -1, main="Mahalanobis dist - Complete linkage")
+```
+
+
+4. Which linkage method did you use? Now, compare the results fixing one of the distance, and use the different linkgage methods you know. 
+
+Complete 
+```{r}
+hc <- hclust(d_manhattan)
+plot(hc ,hang = -1, main="Manhattan dist - Complete linkage")
+```
+
+Single
+```{r}
+hc <- hclust(d_manhattan,method = "single")
+plot(hc ,hang = -1, main="Manhatta dist - Single linkage")
+```
+
+Average
+```{r}
+hc <- hclust(d_manhattan,method="average")
+plot(hc ,hang = -1, main="Manhatta dist - Average linkage")
+```
+
+5. Apply k-means clustering. Plot the clusters you get from k-means in a PCA plot. 
+```{r}
+km2 <- kmeans(Xs, centers = 2 )
+km3 <- kmeans(Xs, centers = 3 )
+clus2 <- km2$cluster
+clus3 <- km3$cluster
+plot(pc[,1],pc[,2],col=clus2,pch=clus2,xlab='PC1',ylab='PC2',main="Plot with k-mean with k=2")
+text(pc[,1]-0.1,pc[,2]-0.1, labels=rownames(X),col=clus2)
+plot(pc[,1],pc[,2],col=clus3,pch=clus3,xlab='PC1',ylab='PC2',main="Plot with k-mean with k=3")
+text(pc[,1]-0.1,pc[,2]-0.1, labels=rownames(X),col=clus3)
+```
+
+Now using MAhalanobis distance:
+
+```{r}
+km_mah2 <- kmeans(Xinvsqrt, centers = 2 )
+km_mah3 <- kmeans(Xinvsqrt, centers = 3 )
+clus_mah2 <- km_mah2$cluster
+clus_mah3 <- km_mah3$cluster
+plot(pc[,1],pc[,2],col=clus_mah2,pch=clus_mah2,xlab='PC1',ylab='PC2',main="Plot with k-mean with k=2 Mahalanobis distance")
+text(pc[,1]-0.1,pc[,2]-0.1, labels=rownames(X),col=clus_mah2)
+plot(pc[,1],pc[,2],col=clus_mah3,pch=clus_mah3,xlab='PC1',ylab='PC2',main="Plot with k-mean with k=3 Mahalanobis distance")
+text(pc[,1]-0.1,pc[,2]-0.1, labels=rownames(X),col=clus_mah3)
+```
+
+
+Highlight why one of the clusters looks "odd", or somehow split. 
+
+6. How does k-means depends on the distance? which one did you use in your implementation 
+
+
+7. Choose $k$. Comment the dendogram but discuss also one of the metric discussed in class.  
+
+```{r}
+wss = c(sum(Xs^2))
+
+for (i in 2:10) {
+  km  = kmeans(Xs, centers = i)
+  wss = c(wss,sum(km$withinss))
+}
+plot(wss,xlab="k",ylab="wss",main="WSS-Euclidean")
+
+```
+
+we can do it with the Mahalanobis distance as well 
+
+```{r}
+wss = c(sum(Xinvsqrt^2))
+
+for (i in 2:10) {
+  km  = kmeans(Xinvsqrt, centers = i)
+  wss = c(wss,sum(km$withinss))
+}
+plot(wss,xlab="k",ylab="wss",main="WSS-Mahalanobis")
+
+```

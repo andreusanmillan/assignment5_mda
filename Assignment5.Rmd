@@ -10,24 +10,12 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 ## Assignment 5
 
-The assignment is designed to practice the different clustering algorithms we used. We reanalyzed the dataset about economic indicators of several countries. 
 ```{r}
 # data loading
 data = read.table("https://84.89.132.1/~satorra/dades/AMD1.txt", header=T, )
 X <- as.matrix(data[,-1])
 rownames(X) <- data[,1]
 ```
-
-1. Center and scale the observations. Name the matrix Xs and do a PCA plot of the variables.
-2. Compute Euclidean, Manhattan, and Mahalanobis distances of the observations in Xs. 
-3. Apply hierarchical clustering to the three distance matrix, compare the results. 
-4. Which linkage method did you use? Now, compare the results fixing one of the distance, and use the different linkage methods you know. 
-5. Apply k-means clustering. Plot the clusters you get from k-means in a PCA plot. 
-6. How does k-means depends on the distance? which one did you use in your implementation 
-7. Choose $k$. Comment the dendogram but discuss also one of the metric discussed in class.  
-8. BONUS: check the stability of the chosen solutions using the bootstrap and comment the output. 
-
-
 
 1. Center and scale the observations. Name the matrix Xs and do a PCA plot of the variables.
 ```{r}
